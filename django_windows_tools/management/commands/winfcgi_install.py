@@ -86,6 +86,16 @@ class Command(BaseCommand):
             dest='delete',
             default=False,
             help='Deletes the configuration instead of creating it'),
+        make_option('--stop',
+            action='store_true',
+            dest='stop',
+            default=False,
+            help='Stop the site'),
+        make_option('--start',
+            action='store_true',
+            dest='start',
+            default=False,
+            help='Start the site'),
         make_option('--max-instances',
             dest='maxInstances',
             default=4,
@@ -288,6 +298,18 @@ directory !''')
             if not self.delete_fastcgi_section():
                 raise CommandError('The FastCGI application removal has failed')
 
+    def stop(self, args, options):
+        if not self.run_config_command('stop', 'site', '/site.name:%s' % options['site_name']):
+            raise CommandError('Stopping the site has failed with the following message :\n%s' % self.last_command_error)
+        if not self.run_config_command('stop', 'apppool', '/apppool.name:%s' % options['site_name']):
+            raise CommandError('Stopping the application pool has failed with the following message :\n%s' % self.last_command_error)
+
+    def start(self, args, options):
+        if not self.run_config_command('start', 'apppool', '/apppool.name:%s' % options['site_name']):
+            raise CommandError('Starting the application pool has failed with the following message :\n%s' % self.last_command_error)
+        if not self.run_config_command('start', 'site', '/site.name:%s' % options['site_name']):
+            raise CommandError('Starting the site has failed with the following message :\n%s' % self.last_command_error)
+
     def handle(self, *args, **options):
         if self.script_name == 'django-admin.py':
             raise CommandError("""\
@@ -317,7 +339,11 @@ Please run it with the manage.py of the root directory of your project.
         if not self.check_config_section_exists(self.FASTCGI_SECTION):
             raise CommandError('It seems that The CGI module is not installed')
 
-        if options['delete']:
+        if options['stop']:
+            self.stop(args,options)
+        elif options['start']:
+            self.start(args,options)
+        elif options['delete']:
             self.delete(args,options)
         else:
             self.install(args,options)
