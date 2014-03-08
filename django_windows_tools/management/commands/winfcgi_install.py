@@ -138,6 +138,11 @@ class Command(BaseCommand):
             dest='skip_static',
             default=False,
             help='Skip setting up a virtual directory to serve the static files'),
+        make_option('--skip-media',
+            action='store_true',
+            dest='skip_media',
+            default=False,
+            help='Skip setting up a virtual directory to serve the media files'),
     )
 
     def __init__(self, *args, **kwargs):
@@ -197,7 +202,25 @@ class Command(BaseCommand):
 The web site directory cannot be the same as the static directory,
 for we cannot have two different web.config files in the same
 directory !''')
-            
+
+        # And again for the media directory and URL.
+        media_dir = os.path.normcase(os.path.abspath(getattr(settings, 'MEDIA_ROOT', '')))
+        media_url = getattr(settings, 'MEDIA_URL', '/media/')
+
+        media_match = re.match('/([^/]+)/$', media_url)
+        if media_match:
+            media_is_local = True
+            media_name = media_match.group(1)
+            media_needs_virtual_dir = media_dir != os.path.join(self.install_dir, media_name)
+        else:
+            media_is_local = False
+
+        if media_dir == self.install_dir and media_is_local:
+            raise CommandError('''\
+The web site directory cannot be the same as the media directory,
+for we cannot have two different web.config files in the same
+directory !''')
+
         # create web.config
         if not options['skip_config']:
             print "Creating web.config"
@@ -235,7 +258,12 @@ directory !''')
                 print "Creating virtual directory for [%s] in [%s]" % (static_dir, static_url)
                 if not self.run_config_command('add', 'vdir', '/app.name:%s/' % site_name, '/path:/%s' % static_name, '/physicalPath:%s' % static_dir):
                     raise CommandError('Adding the static virtual directory has failed with the following message :\n%s' % self.last_command_error)
-                
+
+            if media_is_local and media_needs_virtual_dir and not options['skip_media']:
+                print "Creating virtual directory for [%s] in [%s]" % (media_dir, media_url)
+                if not self.run_config_command('add', 'vdir', '/app.name:%s/' % site_name, '/path:/%s' % media_name, '/physicalPath:%s' % media_dir):
+                    raise CommandError('Adding the media virtual directory has failed with the following message :\n%s' % self.last_command_error)
+
 
     def delete(self, args, options):
         if not os.path.exists(self.web_config) and not options['skip_config']:
