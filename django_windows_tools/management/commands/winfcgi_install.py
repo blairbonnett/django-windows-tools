@@ -329,10 +329,20 @@ Please run it with the manage.py of the root directory of your project.
         print 'Using installation directory %s' % self.install_dir
         
         self.web_config = os.path.join(self.install_dir, 'web.config')
-        
+
+        # If no site name is specified on the commandline, try reading it from
+        # an environment variable.
+        if options['site_name'] == '':
+            options['site_name'] = os.environ.get('DJANGO_IIS_SITE_NAME', '')
+
+        # Failing that, use the name of the installation directory.
         if options['site_name'] == '':
             options['site_name'] = os.path.split(self.install_dir)[1]
-        
+
+        # Sanity check -- os.path.split() can return an empty string.
+        if options['site_name'] == '':
+            raise CommandError('Could not determine site name to use.')
+
         if not os.path.exists(self.appcmd):
             raise CommandError('It seems that IIS is not installed on your machine')
 
