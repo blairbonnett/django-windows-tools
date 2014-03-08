@@ -133,6 +133,11 @@ class Command(BaseCommand):
             dest='skip_config',
             default=False,
             help='Skips The configuration creation'),
+        make_option('--skip-static',
+            action='store_true',
+            dest='skip_static',
+            default=False,
+            help='Skip setting up a virtual directory to serve the static files'),
     )
 
     def __init__(self, *args, **kwargs):
@@ -225,8 +230,8 @@ directory !''')
             print "Adding the site to the application pool"
             if not self.run_config_command('set', 'app', '%s/' % site_name, '/applicationPool:%s' % site_name):
                 raise CommandError('Adding the site to the application pool has failed with the following message :\n%s' % self.last_command_error)
-            
-            if static_is_local and static_needs_virtual_dir:
+
+            if static_is_local and static_needs_virtual_dir and not options['skip_static']:
                 print "Creating virtual directory for [%s] in [%s]" % (static_dir, static_url)
                 if not self.run_config_command('add', 'vdir', '/app.name:%s/' % site_name, '/path:/%s' % static_name, '/physicalPath:%s' % static_dir):
                     raise CommandError('Adding the static virtual directory has failed with the following message :\n%s' % self.last_command_error)
